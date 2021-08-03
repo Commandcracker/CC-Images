@@ -7,7 +7,7 @@ mon.setTextScale(0.5)
 local x, y = mon.getSize()
 
 print("loadGIF")
-local image = GIF.loadGIF(fs.find("stuff/*.gif")[1])
+local image = GIF.loadGIF(fs.find(shell.dir() .. "*.gif")[1])
 
 --print("resizeGIF")
 --image = GIF.resizeGIF(image,mon.getSize())
