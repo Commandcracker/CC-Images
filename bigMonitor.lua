@@ -2,41 +2,73 @@
 -- TODO:
 --[[
     * getCursorPos
-    ? isColour
-    ! getBackgroundColour
-    ? getTextColour
+    * isColour
+    * getBackgroundColour
+    * getTextColour
     ! scroll
     ! getPaletteColor
     * setTextColor
     ! getCursorBlink
-    ! getTextScale
+    * getTextScale
     ! setPaletteColour
     * clear
-    ! setBackgroundColor
+    * setBackgroundColor
     * write
     ! setPaletteColor
     * setCursorPos
-    ! getBackgroundColor
-    ? isColor
+    * getBackgroundColor
+    * isColor
     * setTextColour
     * blit
-    ? getTextColor
+    * getTextColor
     * getSize
     ! getPaletteColour
     * setTextScale
     ! setCursorBlink
     * setBackgroundColour
-    ! clearLine
+    * clearLine
 ]]
 -- the monitor
 local bigMonitor = {}
 
+local textScale = 1
+local BackgroundColor = colors.black
+local TextColour = colors.white
 local posy = 1
 local posx = 1
 local setup
 
 function bigMonitor.init(_setup)
     setup = _setup
+end
+
+function bigMonitor.clearLine()
+    local fullWidth, fullHeight = bigMonitor.getSize()
+    local lineHeight = 0
+
+    for linekey, line in pairs(setup) do
+        local monitor = peripheral.wrap(line[1])
+        local width, height = monitor.getSize()
+
+        lineHeight = lineHeight + height
+
+        if posy <= lineHeight then
+            local lineWidth = 0
+
+            for key, monitor_name in pairs(line) do
+                local monitor = peripheral.wrap(monitor_name)
+                local width, height = monitor.getSize()
+                lineWidth = lineWidth + width
+
+                local w = (posx - lineWidth) + width
+                local h = (posy - lineHeight) + height
+
+                monitor.setCursorPos(w, h)
+                monitor.clearLine()
+            end
+            return
+        end
+    end
 end
 
 function bigMonitor.getSize()
@@ -75,6 +107,11 @@ function bigMonitor.setTextScale(scale)
             monitor.setTextScale(scale)
         end
     end
+    textScale = scale
+end
+
+function bigMonitor.getTextScale()
+    return textScale
 end
 
 function bigMonitor.setBackgroundColour(colour)
@@ -84,19 +121,29 @@ function bigMonitor.setBackgroundColour(colour)
             monitor.setBackgroundColour(colour)
         end
     end
+    BackgroundColor = colour
 end
+
+bigMonitor.setBackgroundColor = bigMonitor.setBackgroundColour
+
+function bigMonitor.getBackgroundColor()
+    return BackgroundColor
+end
+
+bigMonitor.getBackgroundColour = bigMonitor.getBackgroundColor
 
 function bigMonitor.setCursorPos(x, y)
     posy = y
     posx = x
 end
 
-function bigMonitor.write(text)
-    -- Fix Too long without yielding
+-- Fix Too long without yielding
+local function yield()
     os.queueEvent("randomEvent")
     os.pullEvent()
-    --------------------------------
+end
 
+local function writeAt(text, x, y)
     local fullWidth, fullHeight = bigMonitor.getSize()
     local lineHeight = 0
 
@@ -106,7 +153,7 @@ function bigMonitor.write(text)
 
         lineHeight = lineHeight + height
 
-        if posy <= lineHeight then
+        if y <= lineHeight then
             local lineWidth = 0
 
             for key, monitor_name in pairs(line) do
@@ -114,15 +161,13 @@ function bigMonitor.write(text)
                 local width, height = monitor.getSize()
                 lineWidth = lineWidth + width
 
-                if posx <= lineWidth then
-                    local w = (posx - lineWidth) + width
-                    local h = (posy - lineHeight) + height
+                if x <= lineWidth then
+                    local w = (x - lineWidth) + width
+                    local h = (y - lineHeight) + height
 
                     if #text > width + 1 - w then
                         local textWarp = width + 1 - w
-                        bigMonitor.setCursorPos(lineWidth + 1, posy)
-                        bigMonitor.write(string.sub(text, textWarp))
-                        bigMonitor.setCursorPos(lineWidth, lineHeight)
+                        writeAt(string.sub(text, textWarp + 1), lineWidth + 1, y)
                         text = string.sub(text, 0, textWarp)
                     end
 
@@ -135,12 +180,13 @@ function bigMonitor.write(text)
     end
 end
 
-function bigMonitor.blit(text, textColour, backgroundColour)
-    -- Fix Too long without yielding
-    os.queueEvent("randomEvent")
-    os.pullEvent()
-    --------------------------------
+function bigMonitor.write(text)
+    yield()
+    writeAt(text, posx, posy)
+    bigMonitor.setCursorPos(posx + #text, posy)
+end
 
+local function blitAt(text, textColour, backgroundColour, x, y)
     local fullWidth, fullHeight = bigMonitor.getSize()
     local lineHeight = 0
 
@@ -150,7 +196,7 @@ function bigMonitor.blit(text, textColour, backgroundColour)
 
         lineHeight = lineHeight + height
 
-        if posy <= lineHeight then
+        if y <= lineHeight then
             local lineWidth = 0
 
             for key, monitor_name in pairs(line) do
@@ -158,19 +204,19 @@ function bigMonitor.blit(text, textColour, backgroundColour)
                 local width, height = monitor.getSize()
                 lineWidth = lineWidth + width
 
-                if posx <= lineWidth then
-                    local w = (posx - lineWidth) + width
-                    local h = (posy - lineHeight) + height
+                if x <= lineWidth then
+                    local w = (x - lineWidth) + width
+                    local h = (y - lineHeight) + height
 
                     if #text > width + 1 - w then
                         local textWarp = width + 1 - w
-                        bigMonitor.setCursorPos(lineWidth + 1, posy)
-                        bigMonitor.blit(
-                            string.sub(text, textWarp),
-                            string.sub(textColour, textWarp),
-                            string.sub(backgroundColour, textWarp)
+                        blitAt(
+                            string.sub(text, textWarp + 1),
+                            string.sub(textColour, textWarp + 1),
+                            string.sub(backgroundColour, textWarp + 1),
+                            lineWidth + 1,
+                            y
                         )
-                        bigMonitor.setCursorPos(lineWidth, lineHeight)
                         text = string.sub(text, 0, textWarp)
                         textColour = string.sub(textColour, 0, textWarp)
                         backgroundColour = string.sub(backgroundColour, 0, textWarp)
@@ -185,21 +231,26 @@ function bigMonitor.blit(text, textColour, backgroundColour)
     end
 end
 
+function bigMonitor.blit(text, textColour, backgroundColour)
+    yield()
+    blitAt(text, textColour, backgroundColour, posx, posy)
+    bigMonitor.setCursorPos(posx + #text, posy)
+end
+
 function bigMonitor.isColour()
+    for _, line in pairs(setup) do
+        for _, monitor_name in pairs(line) do
+            local monitor = peripheral.wrap(monitor_name)
+            if not monitor.isColor() then
+                return false
+            end
+        end
+    end
+
     return true
 end
 
-function bigMonitor.isColor()
-    return true
-end
-
-function bigMonitor.getTextColour()
-    return colours.white
-end
-
-function bigMonitor.getTextColor()
-    return colours.white
-end
+bigMonitor.isColor = bigMonitor.isColour
 
 function bigMonitor.setTextColour(colour)
     for _, line in pairs(setup) do
@@ -208,11 +259,16 @@ function bigMonitor.setTextColour(colour)
             monitor.setTextColour(colour)
         end
     end
+    TextColour = colour
 end
 
-function bigMonitor.setTextColor(colour)
-    bigMonitor.setTextColour(colour)
+bigMonitor.setTextColor = bigMonitor.setTextColour
+
+function bigMonitor.getTextColour()
+    return TextColour
 end
+
+bigMonitor.getTextColor = bigMonitor.getTextColour
 
 function bigMonitor.getCursorPos()
     return posx, posy
