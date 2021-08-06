@@ -1,5 +1,9 @@
 # CC-Images
 
+```bash
+wget run https://raw.githubusercontent.com/Commandcracker/CC-Images/master/download.lua
+```
+
 ## Third Party Libraries
 
 | Library                                 | Maintainer                                              |
