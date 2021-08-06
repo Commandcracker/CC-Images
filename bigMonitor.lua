@@ -1,32 +1,8 @@
 -- © Commandcracker
 -- TODO:
 --[[
-    * getCursorPos
-    * isColour
-    * getBackgroundColour
-    * getTextColour
-    ! scroll
-    ! getPaletteColor
-    * setTextColor
-    ! getCursorBlink
-    * getTextScale
-    ! setPaletteColour
-    * clear
-    * setBackgroundColor
-    * write
-    ! setPaletteColor
-    * setCursorPos
-    * getBackgroundColor
-    * isColor
-    * setTextColour
-    * blit
-    * getTextColor
-    * getSize
-    ! getPaletteColour
-    * setTextScale
-    ! setCursorBlink
-    * setBackgroundColour
-    * clearLine
+    ! Improve scroll, PaletteColour
+    ! fix old CC Color and Colour
 ]]
 -- the monitor
 local bigMonitor = {}
@@ -37,6 +13,7 @@ local TextColour = colors.white
 local posy = 1
 local posx = 1
 local setup
+local _blink = false
 
 function bigMonitor.init(_setup)
     setup = _setup
@@ -46,7 +23,7 @@ function bigMonitor.clearLine()
     local fullWidth, fullHeight = bigMonitor.getSize()
     local lineHeight = 0
 
-    for linekey, line in pairs(setup) do
+    for _, line in pairs(setup) do
         local monitor = peripheral.wrap(line[1])
         local width, height = monitor.getSize()
 
@@ -55,7 +32,7 @@ function bigMonitor.clearLine()
         if posy <= lineHeight then
             local lineWidth = 0
 
-            for key, monitor_name in pairs(line) do
+            for _, monitor_name in pairs(line) do
                 local monitor = peripheral.wrap(monitor_name)
                 local width, height = monitor.getSize()
                 lineWidth = lineWidth + width
@@ -135,6 +112,41 @@ bigMonitor.getBackgroundColour = bigMonitor.getBackgroundColor
 function bigMonitor.setCursorPos(x, y)
     posy = y
     posx = x
+
+    for _, line in pairs(setup) do
+        for _, monitor_name in pairs(line) do
+            local monitor = peripheral.wrap(monitor_name)
+            monitor.setCursorBlink(false)
+        end
+    end
+
+    if _blink == true then
+        local fullWidth, fullHeight = bigMonitor.getSize()
+        local lineHeight = 0
+        local f = false
+
+        for _, line in pairs(setup) do
+            local monitor = peripheral.wrap(line[1])
+            local width, height = monitor.getSize()
+    
+            lineHeight = lineHeight + height
+    
+            if posy <= lineHeight then
+                local lineWidth = 0
+    
+                for _, monitor_name in pairs(line) do
+                    local monitor = peripheral.wrap(monitor_name)
+                    local width, height = monitor.getSize()
+                    lineWidth = lineWidth + width
+    
+                    if posx <= lineWidth then
+                        monitor.setCursorBlink(_blink)
+                        return
+                    end
+                end
+            end
+        end
+    end
 end
 
 -- Fix Too long without yielding
@@ -147,7 +159,7 @@ local function writeAt(text, x, y)
     local fullWidth, fullHeight = bigMonitor.getSize()
     local lineHeight = 0
 
-    for linekey, line in pairs(setup) do
+    for _, line in pairs(setup) do
         local monitor = peripheral.wrap(line[1])
         local width, height = monitor.getSize()
 
@@ -156,7 +168,7 @@ local function writeAt(text, x, y)
         if y <= lineHeight then
             local lineWidth = 0
 
-            for key, monitor_name in pairs(line) do
+            for _, monitor_name in pairs(line) do
                 local monitor = peripheral.wrap(monitor_name)
                 local width, height = monitor.getSize()
                 lineWidth = lineWidth + width
@@ -190,7 +202,7 @@ local function blitAt(text, textColour, backgroundColour, x, y)
     local fullWidth, fullHeight = bigMonitor.getSize()
     local lineHeight = 0
 
-    for linekey, line in pairs(setup) do
+    for _, line in pairs(setup) do
         local monitor = peripheral.wrap(line[1])
         local width, height = monitor.getSize()
 
@@ -199,7 +211,7 @@ local function blitAt(text, textColour, backgroundColour, x, y)
         if y <= lineHeight then
             local lineWidth = 0
 
-            for key, monitor_name in pairs(line) do
+            for _, monitor_name in pairs(line) do
                 local monitor = peripheral.wrap(monitor_name)
                 local width, height = monitor.getSize()
                 lineWidth = lineWidth + width
@@ -272,6 +284,65 @@ bigMonitor.getTextColor = bigMonitor.getTextColour
 
 function bigMonitor.getCursorPos()
     return posx, posy
+end
+
+function bigMonitor.setPaletteColor(...)
+    for _, line in pairs(setup) do
+        for _, monitor_name in pairs(line) do
+            local monitor = peripheral.wrap(monitor_name)
+            monitor.setPaletteColour(...)
+        end
+    end
+end
+
+bigMonitor.setPaletteColour = bigMonitor.setPaletteColor
+
+function bigMonitor.getPaletteColor(colour)
+    local monitor = peripheral.wrap(setup[1][1])
+    return monitor.getPaletteColor(colour)
+end
+
+bigMonitor.setPaletteColour = bigMonitor.getPaletteColor
+
+function bigMonitor.setCursorBlink(blink)
+    _blink = blink
+    local fullWidth, fullHeight = bigMonitor.getSize()
+    local lineHeight = 0
+
+    for _, line in pairs(setup) do
+        local monitor = peripheral.wrap(line[1])
+        local width, height = monitor.getSize()
+    
+        lineHeight = lineHeight + height
+
+        if posy <= lineHeight then
+            local lineWidth = 0
+
+            for _, monitor_name in pairs(line) do
+                local monitor = peripheral.wrap(monitor_name)
+                local width, height = monitor.getSize()
+                lineWidth = lineWidth + width
+
+                if posx <= lineWidth then
+                    monitor.setCursorBlink(_blink)
+                    return
+                end
+            end
+        end
+    end
+end
+
+function bigMonitor.getCursorBlink()
+    return _blink
+end
+
+function bigMonitor.scroll(y)
+    for _, line in pairs(setup) do
+        for _, monitor_name in pairs(line) do
+            local monitor = peripheral.wrap(monitor_name)
+            monitor.scroll(y)
+        end
+    end
 end
 
 return bigMonitor
