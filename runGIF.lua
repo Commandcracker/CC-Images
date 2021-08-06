@@ -1,7 +1,20 @@
 local GIF = require("GIF")
 local json = require("json")
-local mon = require("bigMonitor")
-mon.init(json.decode(fs.open(shell.dir() .. "/monitors.json", "r").readAll()))
+
+local bigMonitor1 = dofile("root/bigMonitor.lua")
+bigMonitor1.init(json.decode(fs.open(shell.dir() .. "/bigMonitor1.json", "r").readAll()))
+
+local bigMonitor2 = dofile("root/bigMonitor.lua")
+bigMonitor2.init(json.decode(fs.open(shell.dir() .. "/bigMonitor2.json", "r").readAll()))
+
+local mon = require("multiMonitor")
+
+mon.init(
+    {
+        bigMonitor1,
+        bigMonitor2
+    }
+)
 
 mon.setTextScale(0.5)
 local x, y = mon.getSize()
